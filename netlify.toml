@@ -1,0 +1,15 @@
+[build]
+  functions = "functions"
+  publish = "public"
+
+[functions]
+  directory = "functions"
+
+[[redirects]]
+  from = "/webhook/*"
+  to = "/.netlify/functions/status-updater"
+  status = 200
+  force = true
+
+[build.environment]
+  NODE_VERSION = "18" 

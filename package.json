@@ -1,0 +1,19 @@
+{
+  "name": "bridal-showroom-webhooks",
+  "version": "1.0.0",
+  "description": "Webhook handlers for bridal showroom status tracking",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'No build step required'",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "netlify-cli": "^12.0.0"
+  },
+  "keywords": ["shopify", "webhooks", "bridal-showroom"],
+  "author": "Your Name",
+  "license": "MIT"
+} 

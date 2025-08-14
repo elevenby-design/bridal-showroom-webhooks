@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridal Showroom Webhooks</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bridal Showroom Webhook Status</h1>
+    
+    <div class="status success">
+        <strong>✅ Webhook is running!</strong>
+        <p>Your bridal showroom webhook is active and ready to receive Shopify webhooks.</p>
+    </div>
+    
+    <div class="status info">
+        <strong>📋 Webhook Endpoints:</strong>
+        <ul>
+            <li><strong>Customer Creation:</strong> <code>/webhook/customer-created</code></li>
+            <li><strong>Order Creation:</strong> <code>/webhook/order-created</code></li>
+        </ul>
+    </div>
+    
+    <h2>How to Set Up in Shopify:</h2>
+    <ol>
+        <li>Go to <strong>Settings</strong> → <strong>Notifications</strong> → <strong>Webhooks</strong></li>
+        <li>Create a new webhook for <strong>Customer creation</strong></li>
+        <li>Set the URL to: <code>https://your-site.netlify.app/webhook/customer-created</code></li>
+        <li>Create another webhook for <strong>Order creation</strong></li>
+        <li>Set the URL to: <code>https://your-site.netlify.app/webhook/order-created</code></li>
+        <li>Set format to <strong>JSON</strong></li>
+    </ol>
+    
+    <h2>Environment Variables Needed:</h2>
+    <p>Set these in your Netlify dashboard under <strong>Site settings</strong> → <strong>Environment variables</strong>:</p>
+    <ul>
+        <li><code>SHOPIFY_WEBHOOK_SECRET</code> - Your Shopify webhook secret</li>
+        <li><code>SHOPIFY_ACCESS_TOKEN</code> - Your Shopify admin API access token</li>
+        <li><code>SHOPIFY_SHOP_DOMAIN</code> - Your shop domain (e.g., your-shop.myshopify.com)</li>
+    </ul>
+    
+    <p><em>Last updated: <span id="timestamp"></span></em></p>
+    
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html> 
