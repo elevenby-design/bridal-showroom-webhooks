@@ -56,7 +56,7 @@ exports.handler = async (event, context) => {
     const body = JSON.parse(event.body);
     
     if (topic === 'customers/create') {
-      // Handle customer creation
+      // Handle customer creation (for cases where account is created manually)
       const customer = body;
       console.log('Customer created:', customer.email);
       
@@ -64,6 +64,24 @@ exports.handler = async (event, context) => {
       const bridalPartyData = await checkBridalPartyMembership(customer.email);
       
       if (bridalPartyData) {
+        // Update the bridal party status to 'joined'
+        await updateBridalPartyStatus(bridalPartyData.showroomId, customer.email, 'joined', {
+          customerId: customer.id,
+          joinedDate: new Date().toISOString()
+        });
+        
+        console.log(`Updated ${customer.email} status to 'joined' in showroom ${bridalPartyData.showroomId}`);
+      }
+      
+    } else if (topic === 'customers/login') {
+      // Handle customer login (more reliable for tracking when someone actually joins)
+      const customer = body;
+      console.log('Customer logged in:', customer.email);
+      
+      // Check if this customer is part of a bridal party
+      const bridalPartyData = await checkBridalPartyMembership(customer.email);
+      
+      if (bridalPartyData && bridalPartyData.status === 'invited') {
         // Update the bridal party status to 'joined'
         await updateBridalPartyStatus(bridalPartyData.showroomId, customer.email, 'joined', {
           customerId: customer.id,
@@ -122,7 +140,7 @@ exports.handler = async (event, context) => {
 // Check if a customer is part of a bridal party
 async function checkBridalPartyMembership(email) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/search.json?query=email:${email}`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/search.json?query=email:${email}`, {
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
         'Content-Type': 'application/json'
@@ -135,7 +153,7 @@ async function checkBridalPartyMembership(email) {
       
       if (customer) {
         // Check if customer has bridal party metafields
-        const metafieldsResponse = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customer.id}/metafields.json`, {
+        const metafieldsResponse = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customer.id}/metafields.json`, {
           headers: {
             'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
             'Content-Type': 'application/json'
@@ -149,9 +167,14 @@ async function checkBridalPartyMembership(email) {
           );
           
           if (bridalPartyMetafield) {
+            // Get current status
+            const statusMetafield = metafieldsData.metafields.find(
+              m => m.namespace === 'bridal_showroom' && m.key === 'status'
+            );
+            
             return {
               showroomId: bridalPartyMetafield.value,
-              status: 'invited'
+              status: statusMetafield ? statusMetafield.value : 'invited'
             };
           }
         }
@@ -188,7 +211,7 @@ async function updateBridalPartyStatus(showroomId, email, status, additionalData
 // Get customer by email
 async function getCustomerByEmail(email) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/search.json?query=email:${email}`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/search.json?query=email:${email}`, {
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
         'Content-Type': 'application/json'
@@ -210,7 +233,7 @@ async function getCustomerByEmail(email) {
 // Update customer metafield
 async function updateCustomerMetafield(customerId, namespace, key, value) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customerId}/metafields.json`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customerId}/metafields.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
@@ -262,4 +285,4 @@ async function syncBridalPartyData(email, showroomId) {
   } catch (error) {
     console.error('Error syncing bridal party data:', error);
   }
-} 
+}
