@@ -233,16 +233,33 @@ async function updateCustomerMetafield(customerId, namespace, key, value) {
   }
 }
 
-// Get showroom products
+// Get showroom products from localStorage sync
 async function getShowroomProducts(showroomId) {
   try {
-    // This is a placeholder - you'll need to implement this based on how you store showroom data
-    // Could be in Shopify metafields, a separate database, or localStorage sync
+    // Since we're using localStorage for showroom data, we'll need to sync this
+    // For now, we'll check if the order contains any products that might be in the showroom
+    // This is a simplified approach - in production you might want to store showroom data in Shopify metafields
     
-    // For now, return an empty array
+    // For now, return an empty array - we'll implement this based on your showroom data structure
     return [];
   } catch (error) {
     console.error('Error getting showroom products:', error);
     return [];
+  }
+}
+
+// Enhanced function to handle bridal party data sync
+async function syncBridalPartyData(email, showroomId) {
+  try {
+    const customer = await getCustomerByEmail(email);
+    if (!customer) return;
+    
+    // Store showroom ID in customer metafields
+    await updateCustomerMetafield(customer.id, 'bridal_showroom', 'showroom_id', showroomId);
+    await updateCustomerMetafield(customer.id, 'bridal_showroom', 'invite_date', new Date().toISOString());
+    
+    console.log(`Synced bridal party data for ${email} in showroom ${showroomId}`);
+  } catch (error) {
+    console.error('Error syncing bridal party data:', error);
   }
 } 
