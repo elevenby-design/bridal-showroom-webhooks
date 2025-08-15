@@ -73,22 +73,25 @@ exports.handler = async (event, context) => {
         console.log(`Updated ${customer.email} status to 'joined' in showroom ${bridalPartyData.showroomId}`);
       }
       
-    } else if (topic === 'customers/login') {
-      // Handle customer login (more reliable for tracking when someone actually joins)
+    } else if (topic === 'customers/update') {
+      // Handle customer updates (triggers when customer profile is updated, including first login)
       const customer = body;
-      console.log('Customer logged in:', customer.email);
+      console.log('Customer updated:', customer.email);
       
       // Check if this customer is part of a bridal party
       const bridalPartyData = await checkBridalPartyMembership(customer.email);
       
       if (bridalPartyData && bridalPartyData.status === 'invited') {
-        // Update the bridal party status to 'joined'
-        await updateBridalPartyStatus(bridalPartyData.showroomId, customer.email, 'joined', {
-          customerId: customer.id,
-          joinedDate: new Date().toISOString()
-        });
-        
-        console.log(`Updated ${customer.email} status to 'joined' in showroom ${bridalPartyData.showroomId}`);
+        // Check if this is likely their first login/update (has accepted_marketing or other indicators)
+        if (customer.accepts_marketing || customer.verified_email || customer.state === 'enabled') {
+          // Update the bridal party status to 'joined'
+          await updateBridalPartyStatus(bridalPartyData.showroomId, customer.email, 'joined', {
+            customerId: customer.id,
+            joinedDate: new Date().toISOString()
+          });
+          
+          console.log(`Updated ${customer.email} status to 'joined' in showroom ${bridalPartyData.showroomId}`);
+        }
       }
       
     } else if (topic === 'orders/create') {
@@ -116,9 +119,28 @@ exports.handler = async (event, context) => {
             orderId: order.id
           });
           
-          console.log(`Updated ${customerEmail} status to 'purchased' in showroom ${bridalPartyData.showroomId}`);
+                  console.log(`Updated ${customerEmail} status to 'purchased' in showroom ${bridalPartyData.showroomId}`);
+      }
+    } else if (topic === 'customers/update') {
+      // Handle customer updates (like when tags are added)
+      const customer = body;
+      console.log('Customer updated:', customer.email);
+      
+      // Check if this customer is part of a bridal party
+      const bridalPartyData = await checkBridalPartyMembership(customer.email);
+      
+      if (bridalPartyData) {
+        // Check if customer has been tagged as "joined" or "active"
+        if (customer.tags && (customer.tags.includes('joined') || customer.tags.includes('active'))) {
+          await updateBridalPartyStatus(bridalPartyData.showroomId, customer.email, 'joined', {
+            customerId: customer.id,
+            joinedDate: new Date().toISOString()
+          });
+          
+          console.log(`Updated ${customer.email} status to 'joined' via tag in showroom ${bridalPartyData.showroomId}`);
         }
       }
+    }
     }
 
     return {
@@ -140,7 +162,7 @@ exports.handler = async (event, context) => {
 // Check if a customer is part of a bridal party
 async function checkBridalPartyMembership(email) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/search.json?query=email:${email}`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/search.json?query=email:${email}`, {
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
         'Content-Type': 'application/json'
@@ -153,7 +175,7 @@ async function checkBridalPartyMembership(email) {
       
       if (customer) {
         // Check if customer has bridal party metafields
-        const metafieldsResponse = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customer.id}/metafields.json`, {
+        const metafieldsResponse = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customer.id}/metafields.json`, {
           headers: {
             'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
             'Content-Type': 'application/json'
@@ -167,14 +189,9 @@ async function checkBridalPartyMembership(email) {
           );
           
           if (bridalPartyMetafield) {
-            // Get current status
-            const statusMetafield = metafieldsData.metafields.find(
-              m => m.namespace === 'bridal_showroom' && m.key === 'status'
-            );
-            
             return {
               showroomId: bridalPartyMetafield.value,
-              status: statusMetafield ? statusMetafield.value : 'invited'
+              status: 'invited'
             };
           }
         }
@@ -211,7 +228,7 @@ async function updateBridalPartyStatus(showroomId, email, status, additionalData
 // Get customer by email
 async function getCustomerByEmail(email) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/search.json?query=email:${email}`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/search.json?query=email:${email}`, {
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
         'Content-Type': 'application/json'
@@ -233,7 +250,7 @@ async function getCustomerByEmail(email) {
 // Update customer metafield
 async function updateCustomerMetafield(customerId, namespace, key, value) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customerId}/metafields.json`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customerId}/metafields.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
@@ -285,4 +302,4 @@ async function syncBridalPartyData(email, showroomId) {
   } catch (error) {
     console.error('Error syncing bridal party data:', error);
   }
-}
+} 
