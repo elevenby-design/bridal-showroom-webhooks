@@ -39,20 +39,12 @@ exports.handler = async (event) => {
     // Step 2: Store bridal party data in customer metafields
     await storeBridalPartyData(customer.id, showroomId, email);
     
-    // Step 3: Send activation email via Klaviyo
-    const emailResult = await sendActivationEmail(email, firstName, lastName, customer.account_activation_url, {
-      showroomId,
-      brideName,
-      weddingDate
-    });
-
     return { 
       statusCode: 200, 
       headers, 
       body: JSON.stringify({ 
         success: true, 
-        customer: customer,
-        emailSent: emailResult.success 
+        customer: customer
       }) 
     };
 
@@ -165,64 +157,7 @@ async function storeBridalPartyData(customerId, showroomId, email) {
   }
 }
 
-// Send activation email via Klaviyo
-async function sendActivationEmail(email, firstName, lastName, activationUrl, additionalData = {}) {
-  try {
-    if (!KLAVIYO_PRIVATE_API_KEY) {
-      console.log('Klaviyo API key not configured, skipping email send');
-      return { success: false, error: 'Klaviyo not configured' };
-    }
 
-    // Use your existing "Bridal Party Invited" metric
-    const emailData = {
-      token: KLAVIYO_PRIVATE_API_KEY,
-      event: 'Bridal Party Invited',
-      customer_properties: {
-        '$email': email,
-        '$first_name': firstName,
-        '$last_name': lastName,
-        'Bridal Party Member': true,
-        'Showroom ID': additionalData.showroomId || '',
-        'Bride Name': additionalData.brideName || '',
-        'Wedding Date': additionalData.weddingDate || '',
-        'Invite Date': new Date().toISOString(),
-        'Account Status': 'invited',
-        'Activation Email Sent': true
-      },
-      properties: {
-        'activation_url': activationUrl,
-        'bride_name': additionalData.brideName || '',
-        'wedding_date': additionalData.weddingDate || '',
-        'showroom_url': `${process.env.SITE_URL || 'https://your-store.com'}/pages/showroom`,
-        'invite_date': new Date().toISOString(),
-        'roles': additionalData.roles ? additionalData.roles.join(', ') : '',
-        'customer_created': true,
-        'shopify_account_created': true
-      }
-    };
-
-    // Send to Klaviyo
-    const response = await fetch('https://a.klaviyo.com/api/track', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(emailData)
-    });
-
-    if (response.ok) {
-      console.log(`Activation email sent to ${email} via existing "Bridal Party Invited" metric`);
-      return { success: true };
-    } else {
-      console.error('Klaviyo API error:', await response.text());
-      return { success: false, error: 'Failed to send email' };
-    }
-
-  } catch (error) {
-    console.error('Error sending activation email:', error);
-    return { success: false, error: error.message };
-  }
-}
 
 // Generate a secure password
 function generateSecurePassword() {
