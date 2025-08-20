@@ -32,16 +32,23 @@ exports.handler = async (event) => {
         const customer = await getCustomerByEmail(email);
         if (!customer) { results[email] = { status: null }; continue; }
 
-        // Read bridal_showroom/status metafield
-        const metafields = await getCustomerMetafields(customer.id);
-        const statusMf = metafields.find(m => m.namespace === 'bridal_showroom' && m.key === 'status');
-        const joinedDateMf = metafields.find(m => m.namespace === 'bridal_showroom' && m.key === 'joinedDate');
+                            // Read bridal_showroom/status metafield
+                    const metafields = await getCustomerMetafields(customer.id);
+                    const statusMf = metafields.find(m => m.namespace === 'bridal_showroom' && m.key === 'status');
+                    const joinedDateMf = metafields.find(m => m.namespace === 'bridal_showroom' && m.key === 'joinedDate');
+                    
+                    // Check if customer account is activated (state === 'enabled')
+                    let status = statusMf ? statusMf.value : null;
+                    if (customer.state === 'enabled' && status === 'invited') {
+                      status = 'joined';
+                    }
 
-        results[email] = {
-          status: statusMf ? statusMf.value : null,
-          joinedDate: joinedDateMf ? joinedDateMf.value : null,
-          customerId: customer.id
-        };
+                    results[email] = {
+                      status: status,
+                      joinedDate: joinedDateMf ? joinedDateMf.value : null,
+                      customerId: customer.id,
+                      accountState: customer.state
+                    };
       } catch (e) {
         results[email] = { status: null, error: e.message };
       }
