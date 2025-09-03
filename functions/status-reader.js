@@ -2,7 +2,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') { return { statusCode: 204, headers: h() }; }
   const { customerId, showroomData } = JSON.parse(event.body || '{}');
   const domain = process.env.SHOPIFY_STORE_DOMAIN;
-  const ver = process.env.SHOPIFY_API_VERSION || '2023-10';
+  const ver = process.env.SHOPIFY_API_VERSION || '2024-10';
   try {
     const resp = await fetch(`https://${domain}/admin/api/${ver}/customers/${customerId}/metafields.json`, {
       method: 'POST',

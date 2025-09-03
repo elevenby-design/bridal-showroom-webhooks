@@ -57,7 +57,7 @@ exports.handler = async function(event, context) {
     }
 
     // First, find the customer by email
-    const searchResponse = await fetch(`https://${shopDomain}.myshopify.com/admin/api/2023-10/customers/search.json?query=email:${encodeURIComponent(email)}`, {
+    const searchResponse = await fetch(`https://${shopDomain}.myshopify.com/admin/api/2024-10/customers/search.json?query=email:${encodeURIComponent(email)}`, {
       method: 'GET',
       headers: {
         'X-Shopify-Access-Token': accessToken,
@@ -82,7 +82,7 @@ exports.handler = async function(event, context) {
 
     if (customers.length === 0) {
       // Create new customer if not found
-      const createResponse = await fetch(`https://${shopDomain}.myshopify.com/admin/api/2023-10/customers.json`, {
+      const createResponse = await fetch(`https://${shopDomain}.myshopify.com/admin/api/2024-10/customers.json`, {
         method: 'POST',
         headers: {
           'X-Shopify-Access-Token': accessToken,
@@ -175,7 +175,7 @@ async function setCustomerMetafields(shopDomain, accessToken, customerId, metafi
       }
     };
 
-    const response = await fetch(`https://${shopDomain}.myshopify.com/admin/api/2023-10/customers/${customerId}/metafields.json`, {
+    const response = await fetch(`https://${shopDomain}.myshopify.com/admin/api/2024-10/customers/${customerId}/metafields.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': accessToken,

@@ -73,7 +73,7 @@ async function createCustomerInShopify(email, firstName, lastName, customerNote)
     // Generate a secure password (not strictly needed if using invite)
     const password = generateSecurePassword();
     
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers.json`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
@@ -101,7 +101,7 @@ async function createCustomerInShopify(email, firstName, lastName, customerNote)
     const customer = data.customer;
     
     // Send invite email explicitly (does not return activation URL; Shopify emails it)
-    const inviteResp = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customer.id}/send_invite.json`, {
+    const inviteResp = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customer.id}/send_invite.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
@@ -163,7 +163,7 @@ async function addBridalPartyTags(customerId, roles) {
     const allTags = [...new Set([...existingTags, ...tags])];
     
     // Update customer with new tags
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customerId}.json`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customerId}.json`, {
       method: 'PUT',
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
@@ -190,7 +190,7 @@ async function addBridalPartyTags(customerId, roles) {
 // Get customer by ID
 async function getCustomerById(customerId) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customerId}.json`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customerId}.json`, {
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
         'Content-Type': 'application/json'
@@ -212,7 +212,7 @@ async function getCustomerById(customerId) {
 // Get customer by email
 async function getCustomerByEmail(email) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/search.json?query=email:${encodeURIComponent(email)}`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/search.json?query=email:${encodeURIComponent(email)}`, {
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
         'Content-Type': 'application/json'
@@ -234,7 +234,7 @@ async function getCustomerByEmail(email) {
 // Generate activation URL for existing customer
 async function generateActivationUrl(customerId) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customerId}/send_invite.json`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customerId}/send_invite.json`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
@@ -267,7 +267,7 @@ async function generateActivationUrl(customerId) {
 // Get invite token (this is a simplified approach)
 async function getInviteToken(customerId) {
   try {
-    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customerId}.json`, {
+    const response = await fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customerId}.json`, {
       headers: {
         'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
         'Content-Type': 'application/json'
@@ -360,7 +360,7 @@ async function storeBridalPartyData(customerId, showroomId, email, brideName, we
       const batch = metafields.slice(i, i + batchSize);
       
       const promises = batch.map(metafield => 
-        fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2023-10/customers/${customerId}/metafields.json`, {
+        fetch(`https://${SHOPIFY_SHOP_DOMAIN}/admin/api/2024-10/customers/${customerId}/metafields.json`, {
           method: 'POST',
           headers: {
             'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
