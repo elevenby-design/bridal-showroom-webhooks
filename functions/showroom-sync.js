@@ -13,7 +13,137 @@ exports.handler = async function(event, context) {
     };
   }
 
-  // Only allow POST requests
+  // Handle GET requests for reading showroom data
+  if (event.httpMethod === 'GET') {
+    try {
+      const { email } = event.queryStringParameters || {};
+      
+      if (!email) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ error: 'Email parameter is required' })
+        };
+      }
+
+      // Get Shopify credentials from environment variables
+      const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+      const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
+
+      if (!shopDomain || !accessToken) {
+        console.error('Missing Shopify credentials');
+        return {
+          statusCode: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ error: 'Shopify configuration missing' })
+        };
+      }
+
+      // Search for customer by email
+      const searchResponse = await fetch(`https://${shopDomain}/admin/api/2024-10/customers/search.json?query=email:${encodeURIComponent(email)}`, {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': accessToken,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!searchResponse.ok) {
+        console.error('Failed to search for customer:', searchResponse.status, searchResponse.statusText);
+        return {
+          statusCode: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ error: 'Failed to search for customer' })
+        };
+      }
+
+      const searchData = await searchResponse.json();
+      const customers = searchData.customers || [];
+
+      if (customers.length === 0) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ error: 'Customer not found' })
+        };
+      }
+
+      const customerId = customers[0].id;
+      console.log('Found customer with ID:', customerId);
+
+      // Get customer metafields
+      const metafieldsResponse = await fetch(`https://${shopDomain}/admin/api/2024-10/customers/${customerId}/metafields.json`, {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': accessToken,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!metafieldsResponse.ok) {
+        console.error('Failed to get customer metafields:', metafieldsResponse.status, metafieldsResponse.statusText);
+        return {
+          statusCode: 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ error: 'Failed to get customer metafields' })
+        };
+      }
+
+      const metafieldsData = await metafieldsResponse.json();
+      const showroomMetafield = metafieldsData.metafields.find(m => m.namespace === 'showroom' && m.key === 'showroom_data');
+
+      if (!showroomMetafield) {
+        return {
+          statusCode: 404,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ error: 'No showroom data found' })
+        };
+      }
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          success: true, 
+          showroomData: JSON.parse(showroomMetafield.value)
+        })
+      };
+
+    } catch (error) {
+      console.error('Error reading showroom data:', error);
+      return {
+        statusCode: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ error: 'Internal server error', details: error.message })
+      };
+    }
+  }
+
+  // Handle POST requests for saving showroom data
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
