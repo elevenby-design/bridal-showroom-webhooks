@@ -105,7 +105,7 @@ exports.handler = async function(event, context) {
       }
 
       const metafieldsData = await metafieldsResponse.json();
-      const showroomMetafield = metafieldsData.metafields.find(m => m.namespace === 'showroom' && m.key === 'showroom_data');
+      const showroomMetafield = metaffieldsFindShowroom(metafieldsData.metafields);
 
       if (!showroomMetafield) {
         return {
@@ -211,53 +211,14 @@ exports.handler = async function(event, context) {
     const customers = searchData.customers || [];
 
     if (customers.length === 0) {
-      // Create new customer if not found
-      const createResponse = await fetch(`https://${shopDomain}/admin/api/2024-10/customers.json`, {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': accessToken,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          customer: {
-            email: email,
-            first_name: 'Bridal',
-            last_name: 'Party',
-            note: 'Created via bridal showroom'
-          }
-        })
-      });
-
-      if (!createResponse.ok) {
-        console.error('Failed to create customer:', createResponse.status, createResponse.statusText);
-        return {
-          statusCode: 500,
-          headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ error: 'Failed to create customer' })
-        };
-      }
-
-      const createData = await createResponse.json();
-      const customerId = createData.customer.id;
-      console.log('Created new customer with ID:', customerId);
-
-      // Now set the metafields for the new customer
-      await setCustomerMetafields(shopDomain, accessToken, customerId, metafields);
-
+      // Do not create placeholder customers here; require the user to be registered/logged in
       return {
-        statusCode: 200,
+        statusCode: 404,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
-          success: true, 
-          message: 'Customer created and metafields set',
-          customerId: customerId
-        })
+        body: JSON.stringify({ error: 'Customer not found; please sign in before syncing' })
       };
     } else {
       // Customer exists, update their metafields
@@ -265,6 +226,31 @@ exports.handler = async function(event, context) {
       console.log('Found existing customer with ID:', customerId);
 
       await setCustomerMetafields(shopDomain, accessToken, customerId, metafields);
+
+      // Try to update first/last name and tags based on showroom_data if present
+      try {
+        const showroomJson = safeParseShowroomData(metafields && metafields.showroom_data);
+        const profileUpdate = buildProfileUpdateFromShowroom(showroomJson);
+        const tagUpdate = await buildTagsFromShowroom(shopDomain, accessToken, customerId, showroomJson);
+
+        if (profileUpdate || tagUpdate) {
+          const body = { customer: { id: customerId, ...(profileUpdate || {}), ...(tagUpdate || {}) } };
+          const updateResp = await fetch(`https://${shopDomain}/admin/api/2024-10/customers/${customerId}.json`, {
+            method: 'PUT',
+            headers: {
+              'X-Shopify-Access-Token': accessToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          });
+          if (!updateResp.ok) {
+            const t = await updateResp.text().catch(() => '');
+            console.warn('Customer update (name/tags) failed:', updateResp.status, t);
+          }
+        }
+      } catch (e) {
+        console.warn('Post-save profile/tag update failed', e);
+      }
 
       return {
         statusCode: 200,
@@ -292,6 +278,54 @@ exports.handler = async function(event, context) {
     };
   }
 };
+
+function metaffieldsFindShowroom(metafields) {
+  if (!Array.isArray(metafields)) return null;
+  return metafields.find(m => m.namespace === 'showroom' && m.key === 'showroom_data');
+}
+
+function safeParseShowroomData(value) {
+  try { return value ? JSON.parse(value) : null; } catch(_) { return null; }
+}
+
+function splitBrideName(name) {
+  if (!name || typeof name !== 'string') return {};
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return { first_name: parts[0] };
+  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };
+}
+
+function buildProfileUpdateFromShowroom(showroom) {
+  if (!showroom) return null;
+  const update = {};
+  if (showroom.bride_name) {
+    Object.assign(update, splitBrideName(showroom.bride_name));
+  }
+  return Object.keys(update).length ? update : null;
+}
+
+async function buildTagsFromShowroom(shopDomain, accessToken, customerId, showroom) {
+  try {
+    if (!showroom) return null;
+    const existingResp = await fetch(`https://${shopDomain}/admin/api/2024-10/customers/${customerId}.json`, {
+      headers: {
+        'X-Shopify-Access-Token': accessToken,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!existingResp.ok) return null;
+    const data = await existingResp.json();
+    const existingTags = (data.customer && data.customer.tags ? String(data.customer.tags).split(',').map(t => t.trim()).filter(Boolean) : []);
+
+    const newTags = new Set(existingTags);
+    newTags.add('showroom-bride');
+    if (showroom.party_size) newTags.add(`showroom-bridal-party-${showroom.party_size}`);
+
+    return { tags: Array.from(newTags).join(', ') };
+  } catch (_) {
+    return null;
+  }
+}
 
 async function setCustomerMetafields(shopDomain, accessToken, customerId, metafields) {
   // Set each metafield
